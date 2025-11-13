@@ -9,6 +9,33 @@
   --light-color: #f9fafb;
   --border-color: #e5e7eb;
   --text-muted: #6b7280;
+
+  /* Light mode (default) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --message-received-bg: #ffffff;
+  --message-received-text: #111827;
+  --sidebar-bg: #ffffff;
+  --user-item-hover: #f3f4f6;
+  --user-item-active: #e0e7ff;
+}
+
+/* Dark mode */
+body.dark-mode {
+  --bg-primary: #1f2937;
+  --bg-secondary: #111827;
+  --bg-tertiary: #374151;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border-color: #374151;
+  --message-received-bg: #374151;
+  --message-received-text: #f9fafb;
+  --sidebar-bg: #1f2937;
+  --user-item-hover: #374151;
+  --user-item-active: #4f46e5;
 }
 
 * {
@@ -19,8 +46,9 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: var(--light-color);
-  color: #111827;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Auth pages */
@@ -73,35 +101,38 @@ body {
 
 /* Sidebar */
 .sidebar {
-  background-color: white;
+  background-color: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: background-color 0.3s ease;
 }
 
 .sidebar-header {
-  background-color: white;
+  background-color: var(--bg-primary);
   flex-shrink: 0;
+  transition: background-color 0.3s ease;
 }
 
 .users-list {
-  background-color: var(--light-color);
+  background-color: var(--bg-secondary);
   overflow-y: auto;
+  transition: background-color 0.3s ease;
 }
 
 .user-item {
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: white;
+  background-color: var(--bg-primary);
 }
 
 .user-item:hover {
-  background-color: #f3f4f6;
+  background-color: var(--user-item-hover);
 }
 
 .user-item.active {
-  background-color: #e0e7ff;
+  background-color: var(--user-item-active);
   border-left: 3px solid var(--primary-color);
 }
 
@@ -144,23 +175,30 @@ body {
 
 /* Chat area */
 .chat-area {
-  background-color: #f9fafb;
+  background-color: var(--bg-secondary);
   height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  transition: background-color 0.3s ease;
 }
 
 .chat-header {
-  background-color: white;
+  background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background-color 0.3s ease;
 }
 
 .messages {
   flex: 1;
   overflow-y: auto;
-  background: linear-gradient(to bottom, #f9fafb 0%, #f3f4f6 100%);
+  background-color: var(--bg-secondary);
   padding: 1.5rem;
+  transition: background-color 0.3s ease;
 }
 
 .message {
@@ -191,10 +229,11 @@ body {
 }
 
 .message-received .message-bubble {
-  background-color: white;
-  color: #111827;
+  background-color: var(--message-received-bg);
+  color: var(--message-received-text);
   border-bottom-left-radius: 0.25rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: background-color 0.3s ease;
 }
 
 .message-text {
@@ -210,15 +249,19 @@ body {
 }
 
 .message-input {
-  background-color: white;
+  background-color: var(--bg-primary);
   border-top: 1px solid var(--border-color);
   flex-shrink: 0;
+  transition: background-color 0.3s ease;
 }
 
 .message-input .form-control {
   border-radius: 2rem;
   border: 1px solid var(--border-color);
   padding: 0.75rem 1.25rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
 }
 
 .message-input .form-control:focus {
@@ -335,13 +378,14 @@ body {
   width: 100%;
   max-width: 320px;
   max-height: 250px;
-  background: white;
+  background: var(--bg-primary);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   overflow-y: auto;
   z-index: 1000;
   margin-bottom: 0.5rem;
+  transition: background-color 0.3s ease;
 }
 
 .emoji-grid {
@@ -361,7 +405,7 @@ body {
 }
 
 .emoji-item:hover {
-  background-color: var(--light-color);
+  background-color: var(--bg-tertiary);
 }
 
 /* Textarea auto-resize */
@@ -376,6 +420,8 @@ body {
   border-radius: 2rem;
   border: 1px solid var(--border-color);
   padding: 0.5rem 1rem;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Breadcrumb navigation */
@@ -409,9 +455,10 @@ body {
   right: -35px;
   top: 50%;
   transform: translateY(-50%);
-  background: white;
+  background: var(--bg-primary);
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
 }
 
 .message:hover .message-actions {
@@ -459,9 +506,80 @@ body {
 
 /* Utilities */
 .text-muted {
-  color: var(--text-muted) !important;
+  color: var(--text-secondary) !important;
 }
 
 .rounded-4 {
   border-radius: 1rem !important;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+  cursor: pointer;
+}
+
+.theme-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.theme-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.theme-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.theme-toggle input:checked + .theme-toggle-slider {
+  background-color: var(--primary-color);
+}
+
+.theme-toggle input:checked + .theme-toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.theme-toggle-icon {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Dark mode specific adjustments */
+body.dark-mode .card {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+body.dark-mode .table {
+  color: var(--text-primary);
+}
+
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+  background-color: var(--bg-tertiary);
+}
+
+body.dark-mode .breadcrumb-nav {
+  background-color: var(--bg-tertiary) !important;
 }
