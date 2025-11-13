@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Settings from '../models/Settings.js';
 import { isAuthenticated, isAdmin } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
 
@@ -68,6 +69,40 @@ router.post('/admin/reset-password/:userId', isAuthenticated, isAdmin, async (re
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).send('Server error');
+  }
+});
+
+// Get theme setting
+router.get('/admin/theme', isAuthenticated, async (req, res) => {
+  try {
+    const themeSetting = await Settings.findOne({ key: 'theme' });
+    const theme = themeSetting ? themeSetting.value : 'light';
+    res.json({ theme });
+  } catch (error) {
+    console.error('Get theme error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Set theme setting (admin only)
+router.post('/admin/theme', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const { theme } = req.body;
+
+    if (!theme || !['light', 'dark'].includes(theme)) {
+      return res.status(400).json({ error: 'Invalid theme value' });
+    }
+
+    await Settings.findOneAndUpdate(
+      { key: 'theme' },
+      { key: 'theme', value: theme },
+      { upsert: true, new: true }
+    );
+
+    res.json({ success: true, theme });
+  } catch (error) {
+    console.error('Set theme error:', error);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import Message from '../models/Message.js';
+import Settings from '../models/Settings.js';
 import { isAuthenticated, isApproved } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -119,6 +120,18 @@ router.post('/chat/message/:messageId/restore', isAuthenticated, isApproved, asy
     res.json({ success: true, message: 'Message restored', data: populatedMessage });
   } catch (error) {
     console.error('Restore message error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get theme setting (for all authenticated users)
+router.get('/theme', isAuthenticated, async (req, res) => {
+  try {
+    const themeSetting = await Settings.findOne({ key: 'theme' });
+    const theme = themeSetting ? themeSetting.value : 'light';
+    res.json({ theme });
+  } catch (error) {
+    console.error('Get theme error:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });

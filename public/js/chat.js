@@ -3,24 +3,55 @@ const socket = io();
 let selectedUser = null;
 let typingTimeout = null;
 
-// Theme management
-const themeToggle = document.getElementById('themeToggle');
-if (themeToggle) {
-  // Load saved theme from localStorage
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  if (savedTheme === 'dark') {
-    document.body.classList.add('dark-mode');
-    themeToggle.checked = true;
-  }
+// Theme management - Load from database
+const loadTheme = async () => {
+  try {
+    const response = await fetch('/theme');
+    const data = await response.json();
+    const theme = data.theme || 'light';
 
-  // Toggle theme
-  themeToggle.addEventListener('change', () => {
-    if (themeToggle.checked) {
+    if (theme === 'dark') {
       document.body.classList.add('dark-mode');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.body.classList.remove('dark-mode');
-      localStorage.setItem('theme', 'light');
+    }
+
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      themeToggle.checked = theme === 'dark';
+    }
+  } catch (error) {
+    console.error('Error loading theme:', error);
+  }
+};
+
+// Initialize theme on page load
+loadTheme();
+
+// Theme toggle (admin only)
+const themeToggle = document.getElementById('themeToggle');
+if (themeToggle) {
+  themeToggle.addEventListener('change', async () => {
+    const theme = themeToggle.checked ? 'dark' : 'light';
+
+    // Apply theme immediately
+    if (theme === 'dark') {
+      document.body.classList.add('dark-mode');
+    } else {
+      document.body.classList.remove('dark-mode');
+    }
+
+    // Save to database (admin only)
+    try {
+      await fetch('/admin/theme', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ theme })
+      });
+    } catch (error) {
+      console.error('Error saving theme:', error);
     }
   });
 }

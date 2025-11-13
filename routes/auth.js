@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Settings from '../models/Settings.js';
 import { redirectIfAuthenticated } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -119,6 +120,18 @@ router.get('/logout', (req, res) => {
     }
     res.redirect('/login');
   });
+});
+
+// Get theme setting (public endpoint for login/signup pages)
+router.get('/public/theme', async (req, res) => {
+  try {
+    const themeSetting = await Settings.findOne({ key: 'theme' });
+    const theme = themeSetting ? themeSetting.value : 'light';
+    res.json({ theme });
+  } catch (error) {
+    console.error('Get theme error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 export default router;
