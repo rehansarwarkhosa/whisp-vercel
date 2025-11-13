@@ -151,6 +151,21 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Handle message deletion
+  socket.on('message_deleted', (data) => {
+    io.to(data.to).emit('message_deleted', {
+      messageId: data.messageId
+    });
+  });
+
+  // Handle message restoration
+  socket.on('message_restored', (data) => {
+    io.to(data.to).emit('message_restored', {
+      messageId: data.messageId,
+      message: data.message
+    });
+  });
+
   // Update last seen on disconnect
   socket.on('disconnect', async () => {
     try {

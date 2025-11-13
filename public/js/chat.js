@@ -15,6 +15,88 @@ const typingIndicator = document.getElementById('typingIndicator');
 const userItems = document.querySelectorAll('.user-item');
 const backBtn = document.getElementById('backBtn');
 const sidebar = document.getElementById('sidebar');
+const emojiBtn = document.getElementById('emojiBtn');
+const emojiPicker = document.getElementById('emojiPicker');
+const emojiGrid = document.getElementById('emojiGrid');
+const breadcrumbNav = document.getElementById('breadcrumbNav');
+const currentChatUser = document.getElementById('currentChatUser');
+const backToUsers = document.getElementById('backToUsers');
+
+// Emoji list
+const emojis = [
+  '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
+  '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+  '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩',
+  '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣',
+  '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬',
+  '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗',
+  '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯',
+  '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐',
+  '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈',
+  '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾',
+  '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿',
+  '😾', '👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️',
+  '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️',
+  '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲',
+  '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶',
+  '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁️', '👅', '👄',
+  '💋', '💘', '💝', '💖', '💗', '💓', '💞', '💕', '💟', '❣️',
+  '💔', '❤️', '🧡', '💛', '💚', '💙', '💜', '🤎', '🖤', '🤍',
+  '💯', '💢', '💥', '💫', '💦', '💨', '🕳️', '💬', '👁️‍🗨️', '🗨️',
+  '🗯️', '💭', '💤', '👋', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇'
+];
+
+// Initialize emoji picker
+emojis.forEach(emoji => {
+  const emojiItem = document.createElement('div');
+  emojiItem.className = 'emoji-item';
+  emojiItem.textContent = emoji;
+  emojiItem.addEventListener('click', () => {
+    const cursorPos = messageInput.selectionStart;
+    const textBefore = messageInput.value.substring(0, cursorPos);
+    const textAfter = messageInput.value.substring(cursorPos);
+    messageInput.value = textBefore + emoji + textAfter;
+    messageInput.focus();
+    messageInput.selectionStart = messageInput.selectionEnd = cursorPos + emoji.length;
+    emojiPicker.classList.add('d-none');
+  });
+  emojiGrid.appendChild(emojiItem);
+});
+
+// Toggle emoji picker
+emojiBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  emojiPicker.classList.toggle('d-none');
+});
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+  if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+    emojiPicker.classList.add('d-none');
+  }
+});
+
+// Auto-resize textarea
+messageInput.addEventListener('input', () => {
+  messageInput.style.height = 'auto';
+  messageInput.style.height = Math.min(messageInput.scrollHeight, 150) + 'px';
+});
+
+// Breadcrumb navigation
+backToUsers.addEventListener('click', (e) => {
+  e.preventDefault();
+  selectedUser = null;
+  chatHeader.classList.add('d-none');
+  messageInputArea.classList.add('d-none');
+  breadcrumbNav.classList.add('d-none');
+  userItems.forEach(u => u.classList.remove('active'));
+  messagesContainer.innerHTML = `
+    <div class="text-center text-muted mt-5">
+      <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+      <p class="mt-3">Select a user to start chatting</p>
+    </div>
+  `;
+});
 
 // User selection
 userItems.forEach(item => {
@@ -44,6 +126,10 @@ userItems.forEach(item => {
     chatAvatar.textContent = username.charAt(0).toUpperCase();
     chatHeader.classList.remove('d-none');
     messageInputArea.classList.remove('d-none');
+
+    // Update breadcrumb
+    currentChatUser.textContent = username;
+    breadcrumbNav.classList.remove('d-none');
 
     // Show chat area on mobile
     if (window.innerWidth < 768) {
@@ -94,6 +180,14 @@ const loadChatHistory = async (userId) => {
   }
 };
 
+// Handle Enter key to send message
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    messageForm.dispatchEvent(new Event('submit'));
+  }
+});
+
 // Send message
 messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -108,6 +202,7 @@ messageForm.addEventListener('submit', (e) => {
   });
 
   messageInput.value = '';
+  messageInput.style.height = 'auto';
   socket.emit('stop_typing', { to: selectedUser.id });
 });
 
@@ -168,9 +263,11 @@ socket.on('user_stop_typing', (data) => {
 // Append message to chat
 const appendMessage = (message, animate) => {
   const isOwnMessage = message.from._id === currentUser.id;
+  const isDeleted = message.deleted || message.message === '[Message deleted]';
 
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${isOwnMessage ? 'message-sent' : 'message-received'}`;
+  messageDiv.dataset.messageId = message._id || message.id;
 
   if (animate) {
     messageDiv.style.opacity = '0';
@@ -182,11 +279,50 @@ const appendMessage = (message, animate) => {
     minute: '2-digit'
   });
 
+  let messageText = escapeHtml(message.message);
+  let messageClass = '';
+  let deletedIcon = '';
+
+  if (isDeleted) {
+    messageClass = 'message-deleted';
+    deletedIcon = '<i class="bi bi-trash message-deleted-icon"></i>';
+    if (currentUser.isAdmin && message.deleted) {
+      // Admin can see the original message
+      messageText = `${deletedIcon}<del>${escapeHtml(message.message)}</del>`;
+    } else {
+      messageText = `${deletedIcon}${messageText}`;
+    }
+  } else {
+    // Preserve line breaks in message text
+    messageText = messageText.replace(/\n/g, '<br>');
+  }
+
+  // Add delete/restore buttons
+  let actionsHtml = '';
+  if (isOwnMessage && !isDeleted) {
+    actionsHtml = `
+      <div class="message-actions">
+        <button class="message-action-btn delete-msg-btn" data-message-id="${message._id || message.id}" title="Delete message">
+          <i class="bi bi-trash"></i>
+        </button>
+      </div>
+    `;
+  } else if (currentUser.isAdmin && isDeleted && message.deleted) {
+    actionsHtml = `
+      <div class="message-actions">
+        <button class="message-action-btn restore-msg-btn" data-message-id="${message._id || message.id}" title="Restore message">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+      </div>
+    `;
+  }
+
   messageDiv.innerHTML = `
-    <div class="message-bubble">
-      <div class="message-text">${escapeHtml(message.message)}</div>
+    <div class="message-bubble ${messageClass}">
+      <div class="message-text">${messageText}</div>
       <div class="message-time">${time}</div>
     </div>
+    ${actionsHtml}
   `;
 
   // Remove placeholder if exists
@@ -204,6 +340,24 @@ const appendMessage = (message, animate) => {
       messageDiv.style.transform = 'translateY(0)';
     }, 10);
   }
+
+  // Add event listeners for delete/restore buttons
+  const deleteBtn = messageDiv.querySelector('.delete-msg-btn');
+  const restoreBtn = messageDiv.querySelector('.restore-msg-btn');
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', async () => {
+      const messageId = deleteBtn.dataset.messageId;
+      await deleteMessage(messageId);
+    });
+  }
+
+  if (restoreBtn) {
+    restoreBtn.addEventListener('click', async () => {
+      const messageId = restoreBtn.dataset.messageId;
+      await restoreMessage(messageId);
+    });
+  }
 };
 
 // Scroll to bottom
@@ -217,6 +371,101 @@ const escapeHtml = (text) => {
   div.textContent = text;
   return div.innerHTML;
 };
+
+// Delete message
+const deleteMessage = async (messageId) => {
+  try {
+    const response = await fetch(`/chat/message/${messageId}/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Emit socket event to notify other user
+      socket.emit('message_deleted', {
+        messageId: messageId,
+        to: selectedUser.id
+      });
+
+      // Update message in UI
+      const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+      if (messageEl) {
+        const messageBubble = messageEl.querySelector('.message-bubble');
+        const messageText = messageEl.querySelector('.message-text');
+        messageBubble.classList.add('message-deleted');
+        messageText.innerHTML = '<i class="bi bi-trash message-deleted-icon"></i>[Message deleted]';
+
+        // Remove delete button
+        const actionsDiv = messageEl.querySelector('.message-actions');
+        if (actionsDiv) {
+          actionsDiv.remove();
+        }
+      }
+    } else {
+      console.error('Failed to delete message:', data.error);
+    }
+  } catch (error) {
+    console.error('Error deleting message:', error);
+  }
+};
+
+// Restore message (admin only)
+const restoreMessage = async (messageId) => {
+  try {
+    const response = await fetch(`/chat/message/${messageId}/restore`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Emit socket event to notify other user
+      socket.emit('message_restored', {
+        messageId: messageId,
+        message: data.data,
+        to: selectedUser.id
+      });
+
+      // Reload chat history to get the updated message
+      await loadChatHistory(selectedUser.id);
+    } else {
+      console.error('Failed to restore message:', data.error);
+    }
+  } catch (error) {
+    console.error('Error restoring message:', error);
+  }
+};
+
+// Listen for message deletion from other users
+socket.on('message_deleted', (data) => {
+  const messageEl = document.querySelector(`[data-message-id="${data.messageId}"]`);
+  if (messageEl) {
+    const messageBubble = messageEl.querySelector('.message-bubble');
+    const messageText = messageEl.querySelector('.message-text');
+    messageBubble.classList.add('message-deleted');
+    messageText.innerHTML = '<i class="bi bi-trash message-deleted-icon"></i>[Message deleted]';
+
+    // Remove any action buttons
+    const actionsDiv = messageEl.querySelector('.message-actions');
+    if (actionsDiv) {
+      actionsDiv.remove();
+    }
+  }
+});
+
+// Listen for message restoration from admin
+socket.on('message_restored', async (data) => {
+  if (selectedUser) {
+    await loadChatHistory(selectedUser.id);
+  }
+});
 
 // Handle window resize
 window.addEventListener('resize', () => {

@@ -27,6 +27,17 @@
             </div>
           </div>
 
+          <!-- Breadcrumb navigation -->
+          <div class="breadcrumb-nav px-3 py-2 bg-light border-bottom d-none" id="breadcrumbNav">
+            <small class="text-muted">
+              <a href="#" class="text-decoration-none" id="backToUsers">
+                <i class="bi bi-arrow-left"></i> Back to users
+              </a>
+              <span class="mx-1">/</span>
+              <span id="currentChatUser"></span>
+            </small>
+          </div>
+
           <!-- Users list -->
           <div class="users-list flex-grow-1 overflow-auto">
             <div class="p-2">
@@ -81,11 +92,20 @@
           <!-- Message input -->
           <div class="message-input p-3 border-top d-none" id="messageInputArea">
             <form id="messageForm">
-              <div class="input-group">
-                <input type="text" class="form-control" id="messageInput" placeholder="Type a message..." autocomplete="off">
-                <button class="btn btn-primary" type="submit">
-                  <i class="bi bi-send-fill"></i>
-                </button>
+              <div class="position-relative">
+                <div class="input-group">
+                  <button class="btn btn-outline-secondary" type="button" id="emojiBtn">
+                    <i class="bi bi-emoji-smile"></i>
+                  </button>
+                  <textarea class="form-control" id="messageInput" placeholder="Type a message..." autocomplete="off" rows="1"></textarea>
+                  <button class="btn btn-primary" type="submit">
+                    <i class="bi bi-send-fill"></i>
+                  </button>
+                </div>
+                <!-- Emoji picker -->
+                <div class="emoji-picker d-none" id="emojiPicker">
+                  <div class="emoji-grid" id="emojiGrid"></div>
+                </div>
               </div>
             </form>
           </div>
@@ -99,7 +119,8 @@
   <script>
     const currentUser = {
       id: '<%= currentUser.id %>',
-      username: '<%= currentUser.username %>'
+      username: '<%= currentUser.username %>',
+      isAdmin: <%= currentUser.isAdmin %>
     };
   </script>
   <script src="/js/chat.js"></script>
