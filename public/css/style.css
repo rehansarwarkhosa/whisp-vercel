@@ -114,6 +114,9 @@ body {
   background-color: var(--bg-primary);
   flex-shrink: 0;
   transition: background-color 0.3s ease;
+  position: relative;
+  z-index: 50;
+  min-height: 70px;
 }
 
 .users-list {
@@ -192,6 +195,7 @@ body {
   top: 0;
   z-index: 100;
   transition: background-color 0.3s ease;
+  min-height: 60px;
 }
 
 .messages {
@@ -199,7 +203,9 @@ body {
   overflow-y: auto;
   background-color: var(--bg-secondary);
   padding: 1.5rem;
+  padding-top: 1.5rem;
   transition: background-color 0.3s ease;
+  scroll-padding-top: 20px;
 }
 
 .message {
@@ -280,6 +286,12 @@ body {
   background-color: var(--bg-secondary);
   min-height: 100vh;
   transition: background-color 0.3s ease;
+  padding-top: 0;
+}
+
+.admin-page .navbar {
+  position: relative;
+  z-index: 1000;
 }
 
 .stat-icon {
@@ -474,6 +486,7 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
   border-radius: 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease;
+  z-index: 10;
 }
 
 .message:hover .message-actions {
@@ -483,6 +496,35 @@ body.dark-mode ::-webkit-scrollbar-thumb:hover {
 .message-sent .message-actions {
   left: -35px;
   right: auto;
+}
+
+/* Always show action buttons on mobile */
+@media (max-width: 767.98px) {
+  .message-actions {
+    display: flex !important;
+    right: 0px;
+    position: relative;
+    transform: none;
+    margin-top: 0.5rem;
+    justify-content: flex-end;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .message-sent .message-actions {
+    left: auto;
+    right: 0;
+    justify-content: flex-start;
+  }
+
+  .message {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .message-received {
+    align-items: flex-start;
+  }
 }
 
 .message-action-btn {
@@ -682,4 +724,8 @@ body.dark-mode .btn-outline-light:hover {
   background-color: var(--bg-tertiary);
   color: var(--text-primary);
   border-color: var(--border-color);
+}
+
+body.dark-mode .bg-light {
+  background-color: var(--bg-tertiary) !important;
 }

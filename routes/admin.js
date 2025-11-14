@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import Message from '../models/Message.js';
 import Settings from '../models/Settings.js';
 import { isAuthenticated, isAdmin } from '../middleware/auth.js';
 import bcrypt from 'bcryptjs';
@@ -13,10 +14,19 @@ router.get('/admin', isAuthenticated, isAdmin, async (req, res) => {
     const totalUsers = users.length;
     const pendingUsers = users.filter(u => u.status === 'pending').length;
 
+    // Get deleted messages
+    const deletedMessages = await Message.find({ deleted: true })
+      .sort({ deletedAt: -1 })
+      .limit(50)
+      .populate('from', 'username')
+      .populate('to', 'username')
+      .populate('deletedBy', 'username');
+
     res.render('admin', {
       users,
       totalUsers,
       pendingUsers,
+      deletedMessages,
       adminUsername: req.session.username
     });
   } catch (error) {
@@ -103,6 +113,27 @@ router.post('/admin/theme', isAuthenticated, isAdmin, async (req, res) => {
   } catch (error) {
     console.error('Set theme error:', error);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Restore deleted message (admin only)
+router.post('/admin/restore-message/:messageId', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    const message = await Message.findById(req.params.messageId);
+
+    if (!message) {
+      return res.status(404).send('Message not found');
+    }
+
+    message.deleted = false;
+    message.deletedBy = null;
+    message.deletedAt = null;
+    await message.save();
+
+    res.redirect('/admin');
+  } catch (error) {
+    console.error('Restore message error:', error);
+    res.status(500).send('Server error');
   }
 });
 

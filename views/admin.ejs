@@ -63,7 +63,7 @@
     </div>
 
     <!-- Users table -->
-    <div class="card border-0 shadow-sm">
+    <div class="card border-0 shadow-sm mb-4">
       <div class="card-header bg-white">
         <h5 class="mb-0">User Management</h5>
       </div>
@@ -150,6 +150,137 @@
                             <button type="submit" class="btn btn-primary">Reset Password</button>
                           </div>
                         </form>
+                      </div>
+                    </div>
+                  </div>
+                <% }); %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deleted Messages table -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Deleted Messages</h5>
+        <small class="text-muted">Showing last 50 deleted messages</small>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>From</th>
+                <th>To</th>
+                <th>Message</th>
+                <th>Deleted By</th>
+                <th>Deleted At</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (deletedMessages.length === 0) { %>
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">No deleted messages</td>
+                </tr>
+              <% } else { %>
+                <% deletedMessages.forEach(msg => { %>
+                  <tr>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-sm me-2">
+                          <%= msg.from.username.charAt(0).toUpperCase() %>
+                        </div>
+                        <span><%= msg.from.username %></span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <div class="avatar-sm me-2">
+                          <%= msg.to.username.charAt(0).toUpperCase() %>
+                        </div>
+                        <span><%= msg.to.username %></span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="text-truncate" style="max-width: 300px;" title="<%= msg.message %>">
+                        <%= msg.message.length > 50 ? msg.message.substring(0, 50) + '...' : msg.message %>
+                      </div>
+                    </td>
+                    <td>
+                      <% if (msg.deletedBy) { %>
+                        <%= msg.deletedBy.username %>
+                      <% } else { %>
+                        <span class="text-muted">Unknown</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (msg.deletedAt) { %>
+                        <%= new Date(msg.deletedAt).toLocaleString() %>
+                      <% } else { %>
+                        <span class="text-muted">Unknown</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1 justify-content-end">
+                        <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#viewMessageModal<%= msg._id %>" title="View Full Message">
+                          <i class="bi bi-eye-fill"></i>
+                        </button>
+                        <form action="/admin/restore-message/<%= msg._id %>" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to restore this message?')">
+                          <button type="submit" class="btn btn-sm btn-success" title="Restore">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+
+                  <!-- View Message Modal -->
+                  <div class="modal fade" id="viewMessageModal<%= msg._id %>" tabindex="-1">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Message Details</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="mb-3">
+                            <strong>From:</strong> <%= msg.from.username %>
+                          </div>
+                          <div class="mb-3">
+                            <strong>To:</strong> <%= msg.to.username %>
+                          </div>
+                          <div class="mb-3">
+                            <strong>Sent:</strong> <%= new Date(msg.timestamp).toLocaleString() %>
+                          </div>
+                          <div class="mb-3">
+                            <strong>Deleted By:</strong>
+                            <% if (msg.deletedBy) { %>
+                              <%= msg.deletedBy.username %>
+                            <% } else { %>
+                              Unknown
+                            <% } %>
+                          </div>
+                          <div class="mb-3">
+                            <strong>Deleted At:</strong>
+                            <% if (msg.deletedAt) { %>
+                              <%= new Date(msg.deletedAt).toLocaleString() %>
+                            <% } else { %>
+                              Unknown
+                            <% } %>
+                          </div>
+                          <div class="mb-3">
+                            <strong>Message:</strong>
+                            <div class="p-3 bg-light rounded mt-2" style="white-space: pre-wrap; word-wrap: break-word;">
+                              <%= msg.message %>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
                       </div>
                     </div>
                   </div>
