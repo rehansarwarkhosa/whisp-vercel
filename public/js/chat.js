@@ -1,7 +1,97 @@
-const socket = io();
+const socket = io({
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 10
+});
 
 let selectedUser = null;
 let typingTimeout = null;
+let isSocketConnected = false;
+let messageQueue = [];
+
+// Socket connection monitoring
+socket.on('connect', () => {
+  console.log('Socket connected:', socket.id);
+  isSocketConnected = true;
+  updateConnectionStatus(true);
+
+  // Send any queued messages
+  if (messageQueue.length > 0) {
+    console.log(`Sending ${messageQueue.length} queued messages`);
+    messageQueue.forEach(msg => {
+      socket.emit('private_message', msg);
+    });
+    messageQueue = [];
+  }
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Socket disconnected:', reason);
+  isSocketConnected = false;
+  updateConnectionStatus(false);
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Socket connection error:', error);
+  isSocketConnected = false;
+  updateConnectionStatus(false);
+});
+
+socket.on('reconnect', (attemptNumber) => {
+  console.log('Socket reconnected after', attemptNumber, 'attempts');
+  isSocketConnected = true;
+  updateConnectionStatus(true);
+});
+
+socket.on('reconnect_attempt', (attemptNumber) => {
+  console.log('Reconnection attempt', attemptNumber);
+});
+
+socket.on('reconnect_failed', () => {
+  console.error('Socket reconnection failed');
+  alert('Connection lost. Please refresh the page.');
+});
+
+// Update connection status indicator
+const updateConnectionStatus = (connected) => {
+  let statusIndicator = document.getElementById('connectionStatus');
+
+  if (!statusIndicator) {
+    // Create status indicator if it doesn't exist
+    statusIndicator = document.createElement('div');
+    statusIndicator.id = 'connectionStatus';
+    statusIndicator.style.cssText = `
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      z-index: 9999;
+      transition: all 0.3s ease;
+      display: none;
+    `;
+    document.body.appendChild(statusIndicator);
+  }
+
+  if (connected) {
+    statusIndicator.style.background = '#10b981';
+    statusIndicator.style.color = 'white';
+    statusIndicator.textContent = '✓ Connected';
+    statusIndicator.style.display = 'block';
+
+    // Hide after 2 seconds
+    setTimeout(() => {
+      statusIndicator.style.display = 'none';
+    }, 2000);
+  } else {
+    statusIndicator.style.background = '#ef4444';
+    statusIndicator.style.color = 'white';
+    statusIndicator.textContent = '⚠ Disconnected - Reconnecting...';
+    statusIndicator.style.display = 'block';
+  }
+};
 
 // Theme management - Load from database
 const loadTheme = async () => {
@@ -249,25 +339,49 @@ messageForm.addEventListener('submit', (e) => {
 
   if (!message || !selectedUser) return;
 
-  socket.emit('private_message', {
+  const messageData = {
     to: selectedUser.id,
     message: message
-  });
+  };
+
+  // Check if socket is connected
+  if (isSocketConnected && socket.connected) {
+    // Send immediately
+    socket.emit('private_message', messageData);
+  } else {
+    // Queue message for later
+    console.log('Socket not connected, queuing message');
+    messageQueue.push(messageData);
+
+    // Show warning
+    const statusIndicator = document.getElementById('connectionStatus');
+    if (statusIndicator) {
+      statusIndicator.style.background = '#f59e0b';
+      statusIndicator.textContent = '⏳ Message queued - reconnecting...';
+      statusIndicator.style.display = 'block';
+    }
+  }
 
   messageInput.value = '';
   messageInput.style.height = 'auto';
-  socket.emit('stop_typing', { to: selectedUser.id });
+
+  // Only emit stop_typing if connected
+  if (isSocketConnected && socket.connected) {
+    socket.emit('stop_typing', { to: selectedUser.id });
+  }
 });
 
 // Typing indicator
 messageInput.addEventListener('input', () => {
-  if (!selectedUser) return;
+  if (!selectedUser || !isSocketConnected || !socket.connected) return;
 
   socket.emit('typing', { to: selectedUser.id });
 
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
-    socket.emit('stop_typing', { to: selectedUser.id });
+    if (isSocketConnected && socket.connected) {
+      socket.emit('stop_typing', { to: selectedUser.id });
+    }
   }, 1000);
 });
 
@@ -297,6 +411,22 @@ socket.on('message_sent', (data) => {
   if (selectedUser && data.to._id === selectedUser.id) {
     appendMessage(data, true);
     scrollToBottom();
+  }
+});
+
+// Handle socket errors
+socket.on('error', (error) => {
+  console.error('Socket error:', error);
+  const statusIndicator = document.getElementById('connectionStatus');
+  if (statusIndicator) {
+    statusIndicator.style.background = '#ef4444';
+    statusIndicator.style.color = 'white';
+    statusIndicator.textContent = '⚠ Error: ' + (error.message || 'Failed to send message');
+    statusIndicator.style.display = 'block';
+
+    setTimeout(() => {
+      statusIndicator.style.display = 'none';
+    }, 5000);
   }
 });
 

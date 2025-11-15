@@ -22,7 +22,15 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  },
+  transports: ['websocket', 'polling']
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -72,6 +80,8 @@ io.on('connection', (socket) => {
   const session = socket.request.session;
 
   if (!session || !session.userId) {
+    console.log('Socket connection rejected: No valid session');
+    socket.emit('error', { message: 'No valid session. Please login again.' });
     socket.disconnect();
     return;
   }
@@ -79,7 +89,7 @@ io.on('connection', (socket) => {
   const userId = session.userId;
   const username = session.username;
 
-  console.log(`User connected: ${username}`);
+  console.log(`User connected: ${username} (Socket ID: ${socket.id})`);
 
   // Join user to their own room
   socket.join(userId.toString());
@@ -89,6 +99,14 @@ io.on('connection', (socket) => {
     try {
       const { to, message } = data;
 
+      if (!to || !message) {
+        console.error('Invalid message data:', data);
+        socket.emit('error', { message: 'Invalid message data' });
+        return;
+      }
+
+      console.log(`Message from ${username} to ${to}: ${message.substring(0, 50)}...`);
+
       // Save message to database
       const newMessage = new Message({
         from: userId,
@@ -97,14 +115,19 @@ io.on('connection', (socket) => {
       });
 
       await newMessage.save();
+      console.log(`Message saved with ID: ${newMessage._id}`);
 
       const populatedMessage = await Message.findById(newMessage._id)
         .populate('from', 'username')
         .populate('to', 'username');
 
-      // Send to recipient
-      io.to(to).emit('private_message', {
+      if (!populatedMessage) {
+        throw new Error('Failed to populate message');
+      }
+
+      const messageData = {
         id: populatedMessage._id,
+        _id: populatedMessage._id,
         from: {
           _id: populatedMessage.from._id,
           username: populatedMessage.from.username
@@ -115,25 +138,19 @@ io.on('connection', (socket) => {
         },
         message: populatedMessage.message,
         timestamp: populatedMessage.timestamp
-      });
+      };
+
+      // Send to recipient
+      io.to(to).emit('private_message', messageData);
+      console.log(`Message sent to recipient: ${to}`);
 
       // Send back to sender (confirmation)
-      socket.emit('message_sent', {
-        id: populatedMessage._id,
-        from: {
-          _id: populatedMessage.from._id,
-          username: populatedMessage.from.username
-        },
-        to: {
-          _id: populatedMessage.to._id,
-          username: populatedMessage.to.username
-        },
-        message: populatedMessage.message,
-        timestamp: populatedMessage.timestamp
-      });
+      socket.emit('message_sent', messageData);
+      console.log(`Message confirmation sent to sender: ${userId}`);
     } catch (error) {
       console.error('Private message error:', error);
-      socket.emit('error', { message: 'Failed to send message' });
+      console.error('Error stack:', error.stack);
+      socket.emit('error', { message: 'Failed to send message: ' + error.message });
     }
   });
 
