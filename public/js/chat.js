@@ -1,97 +1,5 @@
-const socket = io({
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionAttempts: 10
-});
-
 let selectedUser = null;
-let typingTimeout = null;
-let isSocketConnected = false;
-let messageQueue = [];
-
-// Socket connection monitoring
-socket.on('connect', () => {
-  console.log('Socket connected:', socket.id);
-  isSocketConnected = true;
-  updateConnectionStatus(true);
-
-  // Send any queued messages
-  if (messageQueue.length > 0) {
-    console.log(`Sending ${messageQueue.length} queued messages`);
-    messageQueue.forEach(msg => {
-      socket.emit('private_message', msg);
-    });
-    messageQueue = [];
-  }
-});
-
-socket.on('disconnect', (reason) => {
-  console.log('Socket disconnected:', reason);
-  isSocketConnected = false;
-  updateConnectionStatus(false);
-});
-
-socket.on('connect_error', (error) => {
-  console.error('Socket connection error:', error);
-  isSocketConnected = false;
-  updateConnectionStatus(false);
-});
-
-socket.on('reconnect', (attemptNumber) => {
-  console.log('Socket reconnected after', attemptNumber, 'attempts');
-  isSocketConnected = true;
-  updateConnectionStatus(true);
-});
-
-socket.on('reconnect_attempt', (attemptNumber) => {
-  console.log('Reconnection attempt', attemptNumber);
-});
-
-socket.on('reconnect_failed', () => {
-  console.error('Socket reconnection failed');
-  alert('Connection lost. Please refresh the page.');
-});
-
-// Update connection status indicator
-const updateConnectionStatus = (connected) => {
-  let statusIndicator = document.getElementById('connectionStatus');
-
-  if (!statusIndicator) {
-    // Create status indicator if it doesn't exist
-    statusIndicator = document.createElement('div');
-    statusIndicator.id = 'connectionStatus';
-    statusIndicator.style.cssText = `
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 500;
-      z-index: 9999;
-      transition: all 0.3s ease;
-      display: none;
-    `;
-    document.body.appendChild(statusIndicator);
-  }
-
-  if (connected) {
-    statusIndicator.style.background = '#10b981';
-    statusIndicator.style.color = 'white';
-    statusIndicator.textContent = '✓ Connected';
-    statusIndicator.style.display = 'block';
-
-    // Hide after 2 seconds
-    setTimeout(() => {
-      statusIndicator.style.display = 'none';
-    }, 2000);
-  } else {
-    statusIndicator.style.background = '#ef4444';
-    statusIndicator.style.color = 'white';
-    statusIndicator.textContent = '⚠ Disconnected - Reconnecting...';
-    statusIndicator.style.display = 'block';
-  }
-};
+let autoRefreshInterval = null;
 
 // Theme management - Load from database
 const loadTheme = async () => {
@@ -154,7 +62,6 @@ const messageInputArea = document.getElementById('messageInputArea');
 const chatHeader = document.querySelector('.chat-header');
 const chatUsername = document.getElementById('chatUsername');
 const chatAvatar = document.getElementById('chatAvatar');
-const typingIndicator = document.getElementById('typingIndicator');
 const userItems = document.querySelectorAll('.user-item');
 const backBtn = document.getElementById('backBtn');
 const sidebar = document.getElementById('sidebar');
@@ -164,6 +71,7 @@ const emojiGrid = document.getElementById('emojiGrid');
 const breadcrumbNav = document.getElementById('breadcrumbNav');
 const currentChatUser = document.getElementById('currentChatUser');
 const backToUsers = document.getElementById('backToUsers');
+const refreshBtn = document.getElementById('refreshBtn');
 
 // Emoji list
 const emojis = [
@@ -233,6 +141,13 @@ backToUsers.addEventListener('click', (e) => {
   messageInputArea.classList.add('d-none');
   breadcrumbNav.classList.add('d-none');
   userItems.forEach(u => u.classList.remove('active'));
+
+  // Stop auto-refresh
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+
   messagesContainer.innerHTML = `
     <div class="text-center text-muted mt-5">
       <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
@@ -283,6 +198,14 @@ userItems.forEach(item => {
     // Load chat history
     await loadChatHistory(userId);
 
+    // Start auto-refresh every 3 seconds
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    autoRefreshInterval = setInterval(() => {
+      loadChatHistory(userId, true);
+    }, 3000);
+
     // Focus on message input
     messageInput.focus();
   });
@@ -296,28 +219,49 @@ if (backBtn) {
   });
 }
 
+// Refresh button
+if (refreshBtn) {
+  refreshBtn.addEventListener('click', async () => {
+    if (selectedUser) {
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+      await loadChatHistory(selectedUser.id);
+      setTimeout(() => {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+      }, 500);
+    }
+  });
+}
+
 // Load chat history
-const loadChatHistory = async (userId) => {
+const loadChatHistory = async (userId, silent = false) => {
   try {
     const response = await fetch(`/chat/history/${userId}`);
     const messages = await response.json();
 
-    messagesContainer.innerHTML = '';
+    // Only update if there are changes
+    const currentMessageCount = messagesContainer.querySelectorAll('.message').length;
+    const newMessageCount = messages.length;
 
-    if (messages.length === 0) {
-      messagesContainer.innerHTML = `
-        <div class="text-center text-muted mt-5">
-          <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
-          <p class="mt-3">No messages yet. Start the conversation!</p>
-        </div>
-      `;
-    } else {
-      messages.forEach(msg => {
-        appendMessage(msg, false);
-      });
+    if (!silent || currentMessageCount !== newMessageCount) {
+      messagesContainer.innerHTML = '';
+
+      if (messages.length === 0) {
+        messagesContainer.innerHTML = `
+          <div class="text-center text-muted mt-5">
+            <i class="bi bi-chat-dots" style="font-size: 3rem;"></i>
+            <p class="mt-3">No messages yet. Start the conversation!</p>
+          </div>
+        `;
+      } else {
+        messages.forEach(msg => {
+          appendMessage(msg, false);
+        });
+      }
+
+      scrollToBottom();
     }
-
-    scrollToBottom();
   } catch (error) {
     console.error('Error loading chat history:', error);
   }
@@ -332,114 +276,39 @@ messageInput.addEventListener('keydown', (e) => {
 });
 
 // Send message
-messageForm.addEventListener('submit', (e) => {
+messageForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const message = messageInput.value.trim();
 
   if (!message || !selectedUser) return;
 
-  const messageData = {
-    to: selectedUser.id,
-    message: message
-  };
+  try {
+    const response = await fetch('/chat/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        to: selectedUser.id,
+        message: message
+      })
+    });
 
-  // Check if socket is connected
-  if (isSocketConnected && socket.connected) {
-    // Send immediately
-    socket.emit('private_message', messageData);
-  } else {
-    // Queue message for later
-    console.log('Socket not connected, queuing message');
-    messageQueue.push(messageData);
+    const data = await response.json();
 
-    // Show warning
-    const statusIndicator = document.getElementById('connectionStatus');
-    if (statusIndicator) {
-      statusIndicator.style.background = '#f59e0b';
-      statusIndicator.textContent = '⏳ Message queued - reconnecting...';
-      statusIndicator.style.display = 'block';
+    if (data.success) {
+      messageInput.value = '';
+      messageInput.style.height = 'auto';
+
+      // Reload chat to show the new message
+      await loadChatHistory(selectedUser.id);
+    } else {
+      alert('Failed to send message: ' + (data.error || 'Unknown error'));
     }
-  }
-
-  messageInput.value = '';
-  messageInput.style.height = 'auto';
-
-  // Only emit stop_typing if connected
-  if (isSocketConnected && socket.connected) {
-    socket.emit('stop_typing', { to: selectedUser.id });
-  }
-});
-
-// Typing indicator
-messageInput.addEventListener('input', () => {
-  if (!selectedUser || !isSocketConnected || !socket.connected) return;
-
-  socket.emit('typing', { to: selectedUser.id });
-
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    if (isSocketConnected && socket.connected) {
-      socket.emit('stop_typing', { to: selectedUser.id });
-    }
-  }, 1000);
-});
-
-// Receive message
-socket.on('private_message', (data) => {
-  const isFromSelectedUser = selectedUser && data.from._id === selectedUser.id;
-
-  if (isFromSelectedUser) {
-    appendMessage(data, true);
-    scrollToBottom();
-  } else {
-    // Update unread badge
-    const userItem = document.querySelector(`[data-user-id="${data.from._id}"]`);
-    if (userItem) {
-      const badge = userItem.querySelector('.unread-badge');
-      if (badge) {
-        badge.classList.remove('d-none');
-        const count = parseInt(badge.textContent) || 0;
-        badge.textContent = count + 1;
-      }
-    }
-  }
-});
-
-// Message sent confirmation
-socket.on('message_sent', (data) => {
-  if (selectedUser && data.to._id === selectedUser.id) {
-    appendMessage(data, true);
-    scrollToBottom();
-  }
-});
-
-// Handle socket errors
-socket.on('error', (error) => {
-  console.error('Socket error:', error);
-  const statusIndicator = document.getElementById('connectionStatus');
-  if (statusIndicator) {
-    statusIndicator.style.background = '#ef4444';
-    statusIndicator.style.color = 'white';
-    statusIndicator.textContent = '⚠ Error: ' + (error.message || 'Failed to send message');
-    statusIndicator.style.display = 'block';
-
-    setTimeout(() => {
-      statusIndicator.style.display = 'none';
-    }, 5000);
-  }
-});
-
-// Typing indicator
-socket.on('user_typing', (data) => {
-  if (selectedUser && data.from === selectedUser.id) {
-    typingIndicator.textContent = 'typing...';
-  }
-});
-
-socket.on('user_stop_typing', (data) => {
-  if (selectedUser && data.from === selectedUser.id) {
-    typingIndicator.textContent = '';
+  } catch (error) {
+    console.error('Error sending message:', error);
+    alert('Failed to send message. Please try again.');
   }
 });
 
@@ -568,31 +437,14 @@ const deleteMessage = async (messageId) => {
     const data = await response.json();
 
     if (data.success) {
-      // Emit socket event to notify other user
-      socket.emit('message_deleted', {
-        messageId: messageId,
-        to: selectedUser.id
-      });
-
-      // Update message in UI
-      const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
-      if (messageEl) {
-        const messageBubble = messageEl.querySelector('.message-bubble');
-        const messageText = messageEl.querySelector('.message-text');
-        messageBubble.classList.add('message-deleted');
-        messageText.innerHTML = '<i class="bi bi-trash message-deleted-icon"></i>[Message deleted]';
-
-        // Remove delete button
-        const actionsDiv = messageEl.querySelector('.message-actions');
-        if (actionsDiv) {
-          actionsDiv.remove();
-        }
-      }
+      // Reload chat to show the deleted message
+      await loadChatHistory(selectedUser.id);
     } else {
-      console.error('Failed to delete message:', data.error);
+      alert('Failed to delete message: ' + (data.error || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error deleting message:', error);
+    alert('Failed to delete message. Please try again.');
   }
 };
 
@@ -609,51 +461,28 @@ const restoreMessage = async (messageId) => {
     const data = await response.json();
 
     if (data.success) {
-      // Emit socket event to notify other user
-      socket.emit('message_restored', {
-        messageId: messageId,
-        message: data.data,
-        to: selectedUser.id
-      });
-
-      // Reload chat history to get the updated message
+      // Reload chat to show the restored message
       await loadChatHistory(selectedUser.id);
     } else {
-      console.error('Failed to restore message:', data.error);
+      alert('Failed to restore message: ' + (data.error || 'Unknown error'));
     }
   } catch (error) {
     console.error('Error restoring message:', error);
+    alert('Failed to restore message. Please try again.');
   }
 };
-
-// Listen for message deletion from other users
-socket.on('message_deleted', (data) => {
-  const messageEl = document.querySelector(`[data-message-id="${data.messageId}"]`);
-  if (messageEl) {
-    const messageBubble = messageEl.querySelector('.message-bubble');
-    const messageText = messageEl.querySelector('.message-text');
-    messageBubble.classList.add('message-deleted');
-    messageText.innerHTML = '<i class="bi bi-trash message-deleted-icon"></i>[Message deleted]';
-
-    // Remove any action buttons
-    const actionsDiv = messageEl.querySelector('.message-actions');
-    if (actionsDiv) {
-      actionsDiv.remove();
-    }
-  }
-});
-
-// Listen for message restoration from admin
-socket.on('message_restored', async (data) => {
-  if (selectedUser) {
-    await loadChatHistory(selectedUser.id);
-  }
-});
 
 // Handle window resize
 window.addEventListener('resize', () => {
   if (window.innerWidth >= 768) {
     sidebar.style.display = 'block';
     document.querySelector('.chat-area').style.display = 'block';
+  }
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
   }
 });

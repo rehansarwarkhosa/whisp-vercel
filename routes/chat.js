@@ -30,6 +30,35 @@ router.get('/chat', isAuthenticated, isApproved, async (req, res) => {
   }
 });
 
+// Send message
+router.post('/chat/send', isAuthenticated, isApproved, async (req, res) => {
+  try {
+    const { to, message } = req.body;
+
+    if (!to || !message) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Save message to database
+    const newMessage = new Message({
+      from: req.session.userId,
+      to: to,
+      message: message
+    });
+
+    await newMessage.save();
+
+    const populatedMessage = await Message.findById(newMessage._id)
+      .populate('from', 'username')
+      .populate('to', 'username');
+
+    res.json({ success: true, message: populatedMessage });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get chat history
 router.get('/chat/history/:userId', isAuthenticated, isApproved, async (req, res) => {
   try {
